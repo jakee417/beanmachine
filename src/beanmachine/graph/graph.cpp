@@ -1005,6 +1005,7 @@ void Graph::_infer(
   //   gibbs(num_samples, seed, infer_config);
   // } else 
   if (algorithm == InferenceType::NMC) {
+    torch::NoGradGuard no_grad;
     nmc(num_samples, seed, infer_config);
   }
 }

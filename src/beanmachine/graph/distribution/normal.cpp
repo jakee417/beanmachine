@@ -90,32 +90,32 @@ void Normal::log_prob_iid(
       0.5 * (value._value - m).pow(2) / (s * s);
 }
 
-// void Normal::_grad1_log_prob_value(
-//     double& grad1,
-//     double val,
-//     double m,
-//     double s_sq) {
-//   grad1 += -(val - m) / s_sq;
-// };
+void Normal::_grad1_log_prob_value(
+    double& grad1,
+    double val,
+    double m,
+    double s_sq) {
+  grad1 += -(val - m) / s_sq;
+};
 
 void Normal::gradient_log_prob_value(
     const NodeValue& value,
     double& grad1,
     double& grad2) const {
   assert(value.type.variable_type == graph::VariableType::SCALAR);
-  // double m = in_nodes[0]->value._value;
-  // double s = in_nodes[1]->value._value;
-  // double s_sq = s * s;
-  // _grad1_log_prob_value(grad1, value._value, m, s_sq);
-  // grad2 += -1 / s_sq;
+  double m = in_nodes[0]->value._value.item().toDouble();
+  double s = in_nodes[1]->value._value.item().toDouble();
+  double s_sq = s * s;
+  _grad1_log_prob_value(grad1, value._value.item().toDouble(), m, s_sq);
+  grad2 += -1 / s_sq;
 
-  auto node_value_tmp = NodeValue(value);
-  auto value_tmp = node_value_tmp._value.set_requires_grad(true);
-  torch::Tensor lp = log_prob(node_value_tmp);
-  torch::Tensor grad = torch::autograd::grad({lp}, {value_tmp}, {}, false, true)[0];
-  grad1 += grad.item().toDouble();
-  grad.set_requires_grad(true);
-  grad2 += torch::autograd::grad({grad}, {value_tmp})[0].item().toDouble();
+  // auto node_value_tmp = NodeValue(value);
+  // auto value_tmp = node_value_tmp._value.set_requires_grad(true);
+  // torch::Tensor lp = log_prob(node_value_tmp);
+  // torch::Tensor grad = torch::autograd::grad({lp}, {value_tmp}, {}, false, true)[0];
+  // grad1 += grad.item().toDouble();
+  // grad.set_requires_grad(true);
+  // grad2 += torch::autograd::grad({grad}, {value_tmp})[0].item().toDouble();
   // grad.set_requires_grad(false);
   // value._value.set_requires_grad(false);
 };
@@ -138,30 +138,32 @@ void Normal::gradient_log_prob_param(
   double m_grad2 = in_nodes[0]->grad2;
   torch::Tensor lp = log_prob(value);
   if (m_grad != 0 or m_grad2 != 0) {
-    // torch::Tensor grad_m = (x - m) / s_sq;
-    // torch::Tensor grad2_m2 = -1 / s_sq;
-    // grad1 += grad_m * m_grad;
-    // grad2 += grad2_m2 * m_grad * m_grad + grad_m * m_grad2;
-    m.set_requires_grad(true);
-    torch::Tensor grad = torch::autograd::grad(
-      {lp}, {m}
-    )[0];
-    grad1 += grad.item().toDouble();
-    grad.set_requires_grad(true);
-    grad2 += torch::autograd::grad({grad}, {m})[0].item().toDouble();
+    torch::Tensor grad_m = (x - m) / s_sq;
+    torch::Tensor grad2_m2 = -1 / s_sq;
+    grad1 += (grad_m * m_grad).item().toDouble();
+    grad2 += (grad2_m2 * m_grad * m_grad + grad_m * m_grad2).item().toDouble();
+
+    // m.set_requires_grad(true);
+    // torch::Tensor grad = torch::autograd::grad(
+    //   {lp}, {m}
+    // )[0];
+    // grad1 += grad.item().toDouble();
+    // grad.set_requires_grad(true);
+    // grad2 += torch::autograd::grad({grad}, {m})[0].item().toDouble();
   }
   double s_grad = in_nodes[1]->grad1;
   double s_grad2 = in_nodes[1]->grad2;
   if (s_grad != 0 or s_grad2 != 0) {
-    // torch::Tensor grad_s = -1 / s + (x - m) * (x - m) / (s * s * s);
-    // torch::Tensor grad2_s2 = 1 / s_sq - 3 * (x - m) * (x - m) / (s_sq * s_sq);
-    // grad1 += grad_s * s_grad;
-    // grad2 += grad2_s2 * s_grad * s_grad + grad_s * s_grad2;
-    torch::Tensor grad = torch::autograd::grad(
-      {lp}, {s}
-    )[0];
-    grad1 += grad.item().toDouble();
-    grad2 += torch::autograd::grad({grad}, {s})[0].item().toDouble();
+    torch::Tensor grad_s = -1 / s + (x - m) * (x - m) / (s * s * s);
+    torch::Tensor grad2_s2 = 1 / s_sq - 3 * (x - m) * (x - m) / (s_sq * s_sq);
+    grad1 += (grad_s * s_grad).item().toDouble();
+    grad2 += (grad2_s2 * s_grad * s_grad + grad_s * s_grad2).item().toDouble();
+
+    // torch::Tensor grad = torch::autograd::grad(
+    //   {lp}, {s}
+    // )[0];
+    // grad1 += grad.item().toDouble();
+    // grad2 += torch::autograd::grad({grad}, {s})[0].item().toDouble();
   }
 }
 
