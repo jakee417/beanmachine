@@ -16,9 +16,6 @@
 namespace beanmachine {
 namespace util {
 
-// see https://core.ac.uk/download/pdf/41787448.pdf
-const double PHI_APPROX_GAMMA = 1.702;
-
 bool approx_zero(double val) {
   return std::abs(val) < graph::PRECISION;
 }
